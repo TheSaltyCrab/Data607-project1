@@ -1,0 +1,88 @@
+---
+title: "Data607:project1"
+author: "Daniel Sullivan"
+date: "2/23/2021"
+output: html_document
+---
+get all packages
+```{r}
+library(tidyverse)
+library(openintro)
+library(readr)
+library(dplyr)
+```
+
+## upload the data and put it into a data frame
+```{r}
+tourney_data <- read_file("tournamentinfo.txt")
+chess_table <- data.frame(x=str_extract_all(tourney_data, ".\\d.[|] [A-Z].{0,80}\\r\\n.{0,29}"))
+colnames(chess_table)<-"x"
+chess_table<-chess_table%>%
+  separate(x,c("player number", "name","points", "game1", "game2", "game3", "game4","game5","game6", "game7","state","R"), sep="\\|")
+```
+
+###start organizing data by first seperating the round data into numeric and charecter values for opponent number and win/loss/draw/bye values respectivly.
+```{r}
+chess_table<-chess_table%>%
+  cbind(str_split_fixed(chess_table$game1, " ", 2))%>%
+  cbind(str_split_fixed(chess_table$game2, " ", 2))%>%
+  cbind(str_split_fixed(chess_table$game3, " ", 2))%>%
+  cbind(str_split_fixed(chess_table$game4, " ", 2))%>%
+  cbind(str_split_fixed(chess_table$game5, " ", 2))%>%
+  cbind(str_split_fixed(chess_table$game6, " ", 2))%>%
+  cbind(str_split_fixed(chess_table$game7, " ", 2))
+
+colnames(chess_table)<-c("player_number", "name","points", "game1", "game2", "game3", "game4","game5","game6", "game7","state","R", "game1_result", "game1_oponent", "game2_result", "game2_oponent", "game3_result", "game3_oponent", "game4_result", "game4_oponent", "game5_result", "game5_oponent", "game6_result", "game6_oponent", "game7_result", "game7_oponent")
+
+chess_table<-chess_table[c("player_number", "name","points","state","R", "game1_result", "game1_oponent", "game2_result", "game2_oponent", "game3_result", "game3_oponent", "game4_result", "game4_oponent", "game5_result", "game5_oponent", "game6_result", "game6_oponent", "game7_result", "game7_oponent")]
+
+chess_table$R <- str_extract(chess_table$R,"R: .\\d{2,5}")%>%
+  str_extract("\\d{3,4}")
+
+chess_table$R<-as.numeric(chess_table$R)
+chess_table$player_number<-as.numeric(chess_table$player_number)
+chess_table$game1_oponent<-as.numeric(chess_table$game1_oponent)
+chess_table$game2_oponent<-as.numeric(chess_table$game2_oponent)
+chess_table$game3_oponent<-as.numeric(chess_table$game3_oponent)
+chess_table$game4_oponent<-as.numeric(chess_table$game4_oponent)
+chess_table$game5_oponent<-as.numeric(chess_table$game5_oponent)
+chess_table$game6_oponent<-as.numeric(chess_table$game6_oponent)
+chess_table$game7_oponent<-as.numeric(chess_table$game7_oponent)
+```
+
+
+###calculate the average oponent by creating a function and using lapply to apply it across the data frame and insert it at the end.
+```{r}
+R_func<-function(i){
+  g1<-chess_table%>%
+    filter(player_number == chess_table[i,7])
+  g2<-chess_table%>%
+    filter(player_number == chess_table[i,9])
+  g3<-chess_table%>%
+    filter(player_number == chess_table[i,11])
+  g4<-chess_table%>%
+    filter(player_number == chess_table[i,13])
+  g5<-chess_table%>%
+    filter(player_number == chess_table[i,15])
+  g6<-chess_table%>%
+    filter(player_number == chess_table[i,17])
+  g7<-chess_table%>%
+    filter(player_number == chess_table[i,19])
+  z<-mean(c(g1$R,g2$R,g3$R,g4$R,g5$R,g6$R,g7$R), na.rm = TRUE)
+  return(z)
+}
+```
+
+###trim data so that only values needed are present in CSV file
+```{r}
+
+chess_table$avg_op_R<-sapply(chess_table$player_number, R_func)
+
+chess_for_csv<-chess_table[c("player_number", "name","points","state","R", "avg_op_R")]
+
+write.csv(chess_for_csv, "project_1.csv")
+
+```
+
+
+
